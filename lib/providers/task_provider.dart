@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task.dart';
 import '../services/supabase_service.dart';
 
-final supabaseServiceProvider = Provider<SupabaseServiceService>((ref) {
+final supabaseServiceProvider = Provider<SupabaseService>((ref) {
   return SupabaseService();
 });
 
