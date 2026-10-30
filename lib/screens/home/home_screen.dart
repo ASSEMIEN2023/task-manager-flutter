@@ -16,9 +16,28 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Mes Tâches'),
         actions: [
+          // Bouton de synchronisation manuelle
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Synchroniser',
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Synchronisation en cours...'), duration: Duration(seconds: 1)),
+              );
+              await ref.read(tasksProvider.notifier).syncNow();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Synchronisé !'), duration: Duration(seconds: 1)),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
@@ -57,10 +76,25 @@ class HomeScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Erreur: $err')),
+        error: (err, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Erreur: $err'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.read(tasksProvider.notifier).loadTasks(),
+                child: const Text('Réessayer'),
+              ),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TaskFormScreen())),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TaskFormScreen()),
+        ),
         child: const Icon(Icons.add),
       ),
     );
@@ -74,10 +108,15 @@ class _TaskTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color = Color(
-      task.priority == 'Urgente' ? 0xFFF44336 :
-      task.priority == 'Haute' ? 0xFFFF9800 :
-      task.priority == 'Moyenne' ? 0xFF2196F3 : 0xFF4CAF50,
+      task.priority == 'Urgente'
+          ? 0xFFF44336
+          : task.priority == 'Haute'
+              ? 0xFFFF9800
+              : task.priority == 'Moyenne'
+                  ? 0xFF2196F3
+                  : 0xFF4CAF50,
     );
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -92,13 +131,33 @@ class _TaskTile extends ConsumerWidget {
             color: task.isCompleted ? Colors.grey : null,
           ),
         ),
-        subtitle: task.description != null && task.description!.isNotEmpty ? Text(task.description!) : null,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (task.description != null && task.description!.isNotEmpty)
+              Text(task.description!),
+            if (task.dueDate != null)
+              Text(
+                '📅 ${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+          ],
+        ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-          child: Text(task.priority, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            task.priority,
+            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TaskFormScreen(task: task))),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => TaskFormScreen(task: task)),
+        ),
         onLongPress: () {
           showDialog(
             context: context,
