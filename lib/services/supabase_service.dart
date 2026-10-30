@@ -24,6 +24,7 @@ class SupabaseService {
   }
 
   Future<List<Task>> getTasks() async {
+    if (userId == null) return [];
     final response = await client
         .from('tasks')
         .select()
@@ -56,6 +57,7 @@ class SupabaseService {
   }
 
   Future<List<Category>> getCategories() async {
+    if (userId == null) return [];
     final response = await client
         .from('categories')
         .select()
