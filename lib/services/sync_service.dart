@@ -1,9 +1,9 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart';
 import '../database/app_database.dart';
 import '../models/task.dart';
 import 'supabase_service.dart';
-import 'package:drift/drift.dart';
 
 class SyncService {
   final AppDatabase db;
@@ -18,30 +18,23 @@ class SyncService {
 
   /// Charge les tâches (local d'abord, puis sync si online)
   Future<List<Task>> getTasks(String userId) async {
-    // 1. Toujours lire le local en priorité (offline-first)
     final localTasks = await db.getAllTasks(userId);
 
-    // 2. Si online, synchronise avec Supabase
     if (await isOnline && supabase.userId != null) {
       try {
         await _pushLocalChanges();
         await _pullRemoteTasks(userId);
-        // Recharge après sync
         final updated = await db.getAllTasks(userId);
         return updated.map(_fromLocal).toList();
-      } catch (_) {
-        // En cas d'erreur réseau, on reste sur le local
-      }
+      } catch (_) {}
     }
 
     return localTasks.map(_fromLocal).toList();
   }
 
   Future<Task> createTask(Task task) async {
-    // Toujours écrire en local d'abord
     await db.upsertTask(_toCompanion(task, isSynced: false));
 
-    // Essaye de pousser vers Supabase si online
     if (await isOnline) {
       try {
         final remote = await supabase.createTask(task);
@@ -76,8 +69,6 @@ class SyncService {
     }
   }
 
-  // ---- Sync interne ----
-
   Future<void> _pushLocalChanges() async {
     final unsynced = await db.getUnsyncedTasks();
     for (final local in unsynced) {
@@ -86,7 +77,6 @@ class SyncService {
           await supabase.deleteTask(local.id);
         } else {
           final task = _fromLocal(local);
-          // On tente un update, si ça échoue on crée
           try {
             await supabase.updateTask(task);
           } catch (_) {
@@ -104,8 +94,6 @@ class SyncService {
       await db.upsertTask(_toCompanion(task, isSynced: true));
     }
   }
-
-  // ---- Helpers ----
 
   Task _fromLocal(LocalTask t) {
     return Task(
@@ -140,7 +128,6 @@ class SyncService {
   }
 }
 
-// Providers
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return AppDatabase();
 });
@@ -148,6 +135,6 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 final syncServiceProvider = Provider<SyncService>((ref) {
   return SyncService(
     ref.watch(appDatabaseProvider),
-    ref.watch(supabaseServiceProvider),
+    SupabaseService(),
   );
 });
